@@ -146,6 +146,7 @@ export ELASTICSEARCH_NODE_PORT_NUMBER="${ELASTICSEARCH_NODE_PORT_NUMBER:-9300}"
 export ELASTICSEARCH_NODE_TYPE="${ELASTICSEARCH_NODE_TYPE:-master}"
 export ELASTICSEARCH_PLUGINS="${ELASTICSEARCH_PLUGINS:-}"
 export ELASTICSEARCH_PORT_NUMBER="${ELASTICSEARCH_PORT_NUMBER:-9200}"
+export ELASTICSEARCH_KEYS="${ELASTICSEARCH_KEYS:-}"
 EOF
 }
 
@@ -202,10 +203,10 @@ elasticsearch_validate() {
     }
 
     debug "Validating settings in ELASTICSEARCH_* env vars..."
-    local validate_port_args=()
-    ! am_i_root && validate_port_args+=("-unprivileged")
+    local validate_port_args=("--")
+    ! am_i_root && validate_port_args=("-unprivileged")
     for var in "ELASTICSEARCH_PORT_NUMBER" "ELASTICSEARCH_NODE_PORT_NUMBER"; do
-        if ! err=$(validate_port "${validate_port_args[@]}" "${!var}"); then
+        if ! err=$(validate_port "${validate_port_args[@]:-}" "${!var}"); then
             print_validation_error "An invalid port was specified in the environment variable $var: $err"
         fi
     done
@@ -409,6 +410,7 @@ elasticsearch_initialize() {
         ensure_dir_exists "$dir"
         am_i_root && chown -R "$ELASTICSEARCH_DAEMON_USER:$ELASTICSEARCH_DAEMON_GROUP" "$dir"
     done
+    am_i_root && chown "$ELASTICSEARCH_DAEMON_USER:$ELASTICSEARCH_DAEMON_GROUP" "${ELASTICSEARCH_CONFDIR}/jvm.options"
 
     if [[ -f "$ELASTICSEARCH_CONF_FILE" ]]; then
         info "Custom configuration file detected, using it..."
@@ -437,7 +439,6 @@ elasticsearch_initialize() {
 elasticsearch_install_plugins() {
     read -r -a plugins_list <<< "$(tr ',;' ' ' <<< "$ELASTICSEARCH_PLUGINS")"
     debug "Installing plugins: ${plugins_list[*]}"
-    elasticsearch_conf_set plugin.mandatory "$ELASTICSEARCH_PLUGINS"
     for plugin in "${plugins_list[@]}"; do
         debug "Installing plugin: $plugin"
         if [[ "${BITNAMI_DEBUG:-false}" = true ]]; then
@@ -446,4 +447,29 @@ elasticsearch_install_plugins() {
             elasticsearch-plugin install -b -v "$plugin" >/dev/null 2>&1
         fi
     done
+}
+
+########################
+# Add storage keys
+# Globals:
+#   ELASTICSEARCH_KEYS
+# Arguments:
+#   None
+# Returns:
+#   None
+#########################
+elasticsearch_add_keys() {
+    read -r -a keys_list <<< "$(tr ';' ' ' <<< "$ELASTICSEARCH_KEYS")"
+    debug "Adding keys: ${keys_list[*]}"
+    elasticsearch-keystore create
+    for key in "${keys_list[@]}"; do
+        debug "Add key: $key"
+        read -r -a key_value <<< "$(tr ',' ' ' <<< "$key")"
+        if [[ "${BITNAMI_DEBUG:-false}" = true ]]; then
+            echo ${key_value[1]} | elasticsearch-keystore add --stdin ${key_value[0]}
+        else
+            echo ${key_value[1]} | elasticsearch-keystore add --stdin ${key_value[0]} >/dev/null 2>&1
+        fi
+    done
+    am_i_root && chown "$ELASTICSEARCH_DAEMON_USER:$ELASTICSEARCH_DAEMON_GROUP" "${ELASTICSEARCH_CONFDIR}/elasticsearch.keystore"
 }

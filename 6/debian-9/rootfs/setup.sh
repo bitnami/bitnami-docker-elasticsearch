@@ -28,3 +28,7 @@ elasticsearch_initialize
 if [[ -n "$ELASTICSEARCH_PLUGINS" ]]; then
     elasticsearch_install_plugins
 fi
+
+if [[ -n "$ELASTICSEARCH_KEYS" ]]; then
+    elasticsearch_add_keys
+fi
