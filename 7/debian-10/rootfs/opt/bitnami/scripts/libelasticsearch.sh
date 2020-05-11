@@ -149,6 +149,7 @@ elasticsearch_start() {
 #########################
 elasticsearch_env() {
     cat <<"EOF"
+# Paths
 export ELASTICSEARCH_BASE_DIR="/opt/bitnami/elasticsearch"
 export ELASTICSEARCH_VOLUME_DIR="/bitnami/elasticsearch"
 export ELASTICSEARCH_DATA_DIR="${ELASTICSEARCH_VOLUME_DIR}/data"
@@ -159,8 +160,12 @@ export ELASTICSEARCH_CONF_FILE="${ELASTICSEARCH_CONF_DIR}/elasticsearch.yml"
 export ELASTICSEARCH_TMP_DIR="${ELASTICSEARCH_BASE_DIR}/tmp"
 export ELASTICSEARCH_LOG_DIR="${ELASTICSEARCH_BASE_DIR}/logs"
 export PATH="${ELASTICSEARCH_BASE_DIR}/bin:$PATH"
+
+# Users
 export ELASTICSEARCH_DAEMON_USER="${ELASTICSEARCH_DAEMON_USER:-elasticsearch}"
 export ELASTICSEARCH_DAEMON_GROUP="${ELASTICSEARCH_DAEMON_GROUP:-elasticsearch}"
+
+# Settings
 export ELASTICSEARCH_BIND_ADDRESS="${ELASTICSEARCH_BIND_ADDRESS:-}"
 export ELASTICSEARCH_CLUSTER_HOSTS="${ELASTICSEARCH_CLUSTER_HOSTS:-}"
 export ELASTICSEARCH_TOTAL_NODES="${ELASTICSEARCH_TOTAL_NODES:-}"
@@ -174,6 +179,8 @@ export ELASTICSEARCH_NODE_PORT_NUMBER="${ELASTICSEARCH_NODE_PORT_NUMBER:-9300}"
 export ELASTICSEARCH_NODE_TYPE="${ELASTICSEARCH_NODE_TYPE:-master}"
 export ELASTICSEARCH_PLUGINS="${ELASTICSEARCH_PLUGINS:-}"
 export ELASTICSEARCH_PORT_NUMBER="${ELASTICSEARCH_PORT_NUMBER:-9200}"
+export ELASTICSEARCH_FS_SNAPSHOT_REPO_PATH="${ELASTICSEARCH_FS_SNAPSHOT_REPO_PATH:-}"
+
 ## JVM
 export JAVA_HOME="${JAVA_HOME:-/opt/bitnami/java}"
 EOF
@@ -272,6 +279,7 @@ elasticsearch_cluster_configuration() {
     elasticsearch_conf_set network.bind_host "$(bind_address)"
     elasticsearch_conf_set cluster.name "$ELASTICSEARCH_CLUSTER_NAME"
     elasticsearch_conf_set node.name "${ELASTICSEARCH_NODE_NAME:-$(hostname)}"
+
     if [[ -n "$ELASTICSEARCH_CLUSTER_HOSTS" ]]; then
         read -r -a host_list <<< "$(tr ',;' ' ' <<< "$ELASTICSEARCH_CLUSTER_HOSTS")"
         master_list=( "${host_list[@]}" )
@@ -347,6 +355,12 @@ elasticsearch_configure_node_type() {
     elasticsearch_conf_set node.master "$is_master"
     elasticsearch_conf_set node.data "$is_data"
     elasticsearch_conf_set node.ingest "$is_ingest"
+    if [[ "$is_data" = "true" || "$is_master" = "true" ]] && [[ -n "$ELASTICSEARCH_FS_SNAPSHOT_REPO_PATH" ]]; then
+        # Configure path.repo to restore snapshots from system repository
+        # It must be set on every master an data node
+        # ref: https://www.elastic.co/guide/en/elasticsearch/reference/current/snapshots-register-repository.html#snapshots-filesystem-repository
+        elasticsearch_conf_set path.repo "$ELASTICSEARCH_FS_SNAPSHOT_REPO_PATH"
+    fi
 }
 
 ########################
