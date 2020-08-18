@@ -14,6 +14,10 @@ set -o pipefail
 # Load Elasticsearch environment variables
 eval "$(elasticsearch_env)"
 
+info "** Starting Elasticsearch keystore keys setup **"
+elasticsearch_set_keys
+info "** Elasticsearch keys setup finished! **"
+
 print_welcome_page
 
 if [[ "$*" = "/opt/bitnami/scripts/elasticsearch/run.sh" ]]; then

@@ -183,7 +183,7 @@ export ELASTICSEARCH_PORT_NUMBER="${ELASTICSEARCH_PORT_NUMBER:-9200}"
 export ELASTICSEARCH_FS_SNAPSHOT_REPO_PATH="${ELASTICSEARCH_FS_SNAPSHOT_REPO_PATH:-}"
 
 ## JVM
-export JAVA_HOME="${JAVA_HOME:-/opt/bitnami/java}"
+export JAVA_HOME="${$JAVA_HOME:-/opt/bitnami/java}"
 EOF
 }
 
@@ -535,6 +535,24 @@ elasticsearch_install_plugins() {
 
     # Mark plugins as mandatory
     elasticsearch_conf_set plugin.mandatory "$mandatory_plugins"
+}
+
+########################
+# Set Elasticsearch keystore values
+# Globals:
+#   ELASTICSEARCH_*
+# Arguments:
+#   None
+# Returns:
+#   None
+#########################
+elasticsearch_set_keys() {
+    read -r -a keys_list <<< "$(tr ',;' ' ' <<< "$ELASTICSEARCH_KEYS")"
+    for i in "${keys_list[@]}"
+    do
+    :
+    awk -F "=" '{system("echo "$2" | elasticsearch-keystore add -xf "$1"")}' <<< $i
+    done
 }
 
 ########################
