@@ -16,10 +16,6 @@ eval "$(elasticsearch_env)"
 
 print_welcome_page
 
-info "** Starting Elasticsearch keystore keys setup **"
-elasticsearch_set_keys
-info "** Elasticsearch keys setup finished! **"
-
 if [[ "$*" = "/opt/bitnami/scripts/elasticsearch/run.sh" ]]; then
     info "** Starting Elasticsearch setup **"
     /opt/bitnami/scripts/elasticsearch/setup.sh
