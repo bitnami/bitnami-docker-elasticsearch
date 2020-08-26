@@ -179,6 +179,7 @@ export ELASTICSEARCH_NODE_NAME="${ELASTICSEARCH_NODE_NAME:-}"
 export ELASTICSEARCH_NODE_PORT_NUMBER="${ELASTICSEARCH_NODE_PORT_NUMBER:-9300}"
 export ELASTICSEARCH_NODE_TYPE="${ELASTICSEARCH_NODE_TYPE:-master}"
 export ELASTICSEARCH_PLUGINS="${ELASTICSEARCH_PLUGINS:-}"
+export ELASTICSEARCH_KEYS="${ELASTICSEARCH_KEYS:-}"
 export ELASTICSEARCH_PORT_NUMBER="${ELASTICSEARCH_PORT_NUMBER:-9200}"
 export ELASTICSEARCH_FS_SNAPSHOT_REPO_PATH="${ELASTICSEARCH_FS_SNAPSHOT_REPO_PATH:-}"
 
@@ -548,10 +549,13 @@ elasticsearch_install_plugins() {
 #########################
 elasticsearch_set_keys() {
     read -r -a keys_list <<< "$(tr ',;' ' ' <<< "$ELASTICSEARCH_KEYS")"
-    for i in "${keys_list[@]}"
-    do
-    :
-    awk -F "=" '{system("echo "$2" | elasticsearch-keystore add -xf "$1"")}' <<< $i
+    for key_value in "${keys_list[@]}"; do
+        read -r -a key_value <<< "$(tr '=' ' ' <<< "$key_value")"
+        local key="${key_value[0]}"
+        local value="${key_value[1]}"
+
+        debug "Storing key: ${key}"
+        elasticsearch-keystore add --stdin --force "$key" <<< "$value"
     done
 }
 
