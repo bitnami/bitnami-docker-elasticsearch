@@ -436,6 +436,8 @@ elasticsearch_initialize() {
         am_i_root && chown -R "$ELASTICSEARCH_DAEMON_USER:$ELASTICSEARCH_DAEMON_GROUP" "$dir"
     done
 
+    elasticsearch_set_heap_size
+
     if [[ -f "$ELASTICSEARCH_CONF_FILE" ]]; then
         info "Custom configuration file detected, using it..."
     else
@@ -458,7 +460,6 @@ elasticsearch_initialize() {
         elasticsearch_configure_node_type
         elasticsearch_custom_configuration
     fi
-    elasticsearch_set_heap_size
 }
 
 ########################
